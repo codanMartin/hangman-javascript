@@ -47,6 +47,15 @@ class HangmanGameInstance {
     isUserGuessCorrect(userGuess) {
         return userGuess === this.wordToGuess
     }
+
+    getHintOnWordToGuess() {
+        if (!this.wordToGuess) return ""
+
+        const baseCharacters = this.wordToGuess.split("").splice(0, 3).join("")
+        const dashes = this.wordToGuess.length - 3 > 0 ? ("-").repeat(this.wordToGuess.length - 3) : ""
+
+        return `${baseCharacters}${dashes}`
+    }
 }
 
 class HangmanGameController {
@@ -57,8 +66,10 @@ class HangmanGameController {
 
     playRound() {
         const secretWord = this.repository.getRandomUnguessedWord()
+
         const game = new HangmanGameInstance(secretWord);
-        const userGuess = this.ui.promptForGuess();
+        const hint = game.getHintOnWordToGuess()
+        const userGuess = this.ui.promptForGuess(hint);
 
         if (game.isUserGuessCorrect(userGuess)) {
             this.repository.markWordGuessed(secretWord, true)
@@ -74,8 +85,8 @@ class UI {
         console.log("H A N G M A N");
     }
 
-    promptForGuess() {
-        return input("Guess the word: ");
+    promptForGuess(word = "") {
+        return input(`Guess the word ${word}: `);
     }
 
     showGuessPassedMessage() {
@@ -102,9 +113,9 @@ class HangmanApp {
     }
 
     run() {
-        this.ui.showTitle();
-
         this.initialize()
+
+        this.ui.showTitle();
         this.controller.playRound();
     }
 }
