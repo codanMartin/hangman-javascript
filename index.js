@@ -1,5 +1,7 @@
 const input = require('sync-input');
 
+const DEFAULT_MAX_HANGMAN_ATTEMPTS = 8
+
 class HangmanRepository {
     constructor() {
         this.secretWords = new Map()
@@ -42,19 +44,36 @@ class HangmanRepository {
 class HangmanGameInstance {
     constructor(wordToGuess) {
         this.wordToGuess = wordToGuess;
+        this.guessHint = ("-").repeat(wordToGuess.length)
+        this.attemptsLeft = DEFAULT_MAX_HANGMAN_ATTEMPTS
+        this.isInstanceFinished = false;
+        this.isInstanceWon = false;
     }
 
-    isUserGuessCorrect(userGuess) {
-        return userGuess === this.wordToGuess
+    dropAttemptsLeft() {
+        --this.attemptsLeft;
+        if (this.attemptsLeft === 0) {
+            this.isInstanceFinished = true;
+        }
+        if (this.wordToGuess === this.guessHint) {
+            this.isInstanceWon = true;
+        }
     }
 
-    getHintOnWordToGuess() {
-        if (!this.wordToGuess) return ""
+    testUserGuess(userGuess) {
+        let updatedHint = this.guessHint.split('');
+        let guessWasCorrect = false;
 
-        const baseCharacters = this.wordToGuess.split("").splice(0, 3).join("")
-        const dashes = this.wordToGuess.length - 3 > 0 ? ("-").repeat(this.wordToGuess.length - 3) : ""
+        for (let i = 0; i < this.wordToGuess.length; i++) {
+            if (this.wordToGuess[i] === userGuess) {
+                updatedHint[i] = userGuess;
+                guessWasCorrect = true;
+            }
+        }
 
-        return `${baseCharacters}${dashes}`
+        this.guessHint = updatedHint.join('');
+        this.dropAttemptsLeft()
+        return guessWasCorrect
     }
 }
 
@@ -66,35 +85,51 @@ class HangmanGameController {
 
     playRound() {
         const secretWord = this.repository.getRandomUnguessedWord()
-
         const game = new HangmanGameInstance(secretWord);
-        const hint = game.getHintOnWordToGuess()
-        const userGuess = this.ui.promptForGuess(hint);
 
-        if (game.isUserGuessCorrect(userGuess)) {
-            this.repository.markWordGuessed(secretWord, true)
-            this.ui.showGuessPassedMessage()
-        } else {
-            this.ui.showGuessFailedMessage()
-        }
+        this.ui.showTitle()
+        this.ui.showEmptyLine()
+
+        do {
+            this.ui.showGuessHint(game.guessHint)
+
+            const userGuess = this.ui.promptForLetter().charAt(0)
+            const guessWasCorrect = game.testUserGuess(userGuess)
+
+            if (!guessWasCorrect) {
+                this.ui.showGuessFailedMessage()
+            }
+
+            this.ui.showEmptyLine()
+        } while (!game.isInstanceFinished)
+
+        this.ui.showThanksForPlaying()
     }
 }
 
 class UI {
+    promptForLetter() {
+        return input("Input a letter: ");
+    }
+
     showTitle() {
         console.log("H A N G M A N");
     }
 
-    promptForGuess(word = "") {
-        return input(`Guess the word ${word}: `);
+    showEmptyLine() {
+        console.log("")
     }
 
-    showGuessPassedMessage() {
-        console.log("You survived!");
+    showGuessHint(hint) {
+        console.log(hint);
     }
 
     showGuessFailedMessage() {
-        console.log("You lost!");
+        console.log("That letter doesn't appear in the word.");
+    }
+
+    showThanksForPlaying() {
+        console.log("Thanks for playing!")
     }
 }
 
@@ -115,7 +150,6 @@ class HangmanApp {
     run() {
         this.initialize()
 
-        this.ui.showTitle();
         this.controller.playRound();
     }
 }
