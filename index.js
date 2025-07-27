@@ -1,4 +1,5 @@
 const input = require('sync-input');
+let a = 1
 
 const DEFAULT_MAX_HANGMAN_ATTEMPTS = 8
 
